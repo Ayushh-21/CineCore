@@ -4,6 +4,10 @@ const validateCuratedList = (name, description, slug) => {
         return "Name is required and should be string."
     }
 
+    if (!description || typeof description !== "string") {
+        return "Description is required and should be string."
+    }
+
     if (!slug || typeof slug !== "string") {
         return "Slug is required and should be string."
     }
@@ -12,4 +16,4 @@ const validateCuratedList = (name, description, slug) => {
 }
 
 
-module.exports = { validateCuratedList }
+module.exports = { validateCuratedList, validateCuratedList }

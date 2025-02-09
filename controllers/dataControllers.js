@@ -1,4 +1,5 @@
-const axiosInstance = require("../lib/axios")
+const axiosInstance = require("../lib/axios");
+const { movie } = require("../models");
 require("dotenv").config();
 
 const getActor = async (movieId) => {
@@ -7,45 +8,47 @@ const getActor = async (movieId) => {
         const actors = response.data.cast
         return actors
             .filter(actor => actor.known_for_department === 'Acting')
+            .slice(0, 5)
             .map(actor => actor.name).join(',');
     } catch (error) {
-        return []
+        return ''
     }
 }
 
-const searchMovies = async (req, res) => {
+const movieExistsInDB = async (movieId) => {
+    const movieExist = await movie.findOne({ where: { tmdbId: movieId } })
+    return movieExist ? movieExist : false
+}
+
+const fetchMovieAndCastDetails = async (movieId) => {
     try {
-        const { query } = req.query
-        const response = await axiosInstance.get(`/search/movie?query=${query}`);
+        const response = await axiosInstance.get(`movie/${movieId}`)
 
         if (response.data.length === 0) {
-            res.status(404).json({
-                message: "No movies available with this query."
-            })
+            throw new Error(`error: ${response.data.error}, status: ${response.status}`)
         }
 
-        const movies = response.data.results
-        const extractedData = await Promise.all(
-            movies.map(async movie => {
-                return {
-                    title: movie.original_title || "N/A",
-                    tmdbId: movie.id || "N/A",
-                    genre: movie.genre_ids || "N/A",
-                    actors: await getActor(movie.id) || "N/A",
-                    releaseYear: movie.release_date ? movie.release_date.split('-')[0] : "N/A",
-                    rating: movie.vote_average || "N/A",
-                    description: movie.overview || "N/A"
-                }
-            }))
-        res.json({ movies: extractedData })
-    } catch (error) {
-        res.status(500).json({
-            error: error.message,
-            message: "Error fetching movies."
+        let mov = response.data
+        const cast = await getActor(movieId)
+        const newMovie = await movie.create({
+            title: mov?.title,
+            tmdbId: mov?.id,
+            genre: mov?.genres.map(g => g.name).join(', '),
+            actors: cast,
+            releaseYear: mov?.release_date ? mov?.release_date?.split('-')[0] : 0,
+            rating: mov?.vote_average,
+            description: mov?.overview
         })
+
+        return newMovie;
+
+    } catch (error) {
+        console.error('Error fetching movie details:', error);
+        throw new Error('Failed to fetch movie details.');
     }
+
 }
 
 
 
-module.exports = { searchMovies }
+module.exports = { getActor, movieExistsInDB, fetchMovieAndCastDetails }
