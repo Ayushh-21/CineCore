@@ -1,7 +1,7 @@
 const { validateCuratedList } = require("../validations")
 const { curatedList, watchlist, wishlist, curatedListItem } = require('../models')
 const { generateSlug } = require("../service/serviceFunction")
-const { getActor, movieExistsInDB, fetchMovieAndCastDetails } = require("./dataControllers")
+const { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistCuaratedListItem } = require("./dataControllers")
 
 const searchMovies = async (req, res) => {
     try {
@@ -55,7 +55,9 @@ const createCuratedLists = async (req, res) => {
     } catch (error) {
         console.log(error)
         res.status(500).json({
-            message: "Error creating curated list."
+            message: "Error creating curated list.",
+            error: error.message
+
         })
     }
 }
@@ -117,7 +119,7 @@ const createWatchlist = async (req, res) => {
     } catch (error) {
         res.status(500).json({
             message: "Error creating Watchlist.",
-            error: error
+            error: error.message
         })
     }
 }
@@ -148,7 +150,7 @@ const createWishlist = async (req, res) => {
     } catch (error) {
         res.status(500).json({
             message: "Error creating Wishlist.",
-            error: error
+            error: error.message
         })
     }
 }
@@ -156,9 +158,9 @@ const createWishlist = async (req, res) => {
 const createCuratedListitem = async (req, res) => {
     try {
         const { movieId, curatedListId } = req.body
-        if (!movieId) {
+        if (!movieId || !curatedListId) {
             return res.status(400).json({
-                message: "Provide a valid MovieId."
+                message: "Provide a valid MovieId and curatedListId."
             })
         }
 
@@ -167,17 +169,28 @@ const createCuratedListitem = async (req, res) => {
             movie = await fetchMovieAndCastDetails(movieId)
         }
 
-        await curatedListItem.create({
-            movieId: movie.id,
-            curatedListId: curatedListId
+        const isMovie = await isMovieExistCuaratedListItem(movie.id, curatedListId)
+        if (!isMovie) {
+            await curatedListItem.create({
+                movieId: movie.id,
+                curatedListId: curatedListId
+            })
+        } else {
+            return res.status(400).json({
+                message: "Movie is already in the curated list."
+            });
+        }
+
+        res.status(200).json({
+            message: 'Movie added to curated list successfully.'
         })
 
     } catch (error) {
         res.status(500).json({
             message: "Error creating curatedlistitems.",
-            error: error
+            error: error.message
         })
     }
 }
 
-module.exports = { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist }
+module.exports = { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist, createCuratedListitem }

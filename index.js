@@ -1,6 +1,6 @@
 const express = require('express')
 const cors = require('cors')
-const { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist } = require('./controllers/movieControllers')
+const { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist, createCuratedListitem } = require('./controllers/movieControllers')
 require('dotenv').config()
 
 const app = express()
@@ -14,7 +14,7 @@ app.post('/api/curated-lists', createCuratedLists)
 app.put('/api/curated-lists/:curatedListId', updateCuratedLists)
 app.post('/api/movies/watchlist', createWatchlist)
 app.post('/api/movies/wishlist', createWishlist)
-app.post('/api/movies/curated-list', )
+app.post('/api/movies/curated-list', createCuratedListitem)
 
 
 const PORT = 3000

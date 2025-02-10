@@ -1,5 +1,5 @@
 const axiosInstance = require("../lib/axios");
-const { movie } = require("../models");
+const { movie, curatedListItem } = require("../models");
 require("dotenv").config();
 
 const getActor = async (movieId) => {
@@ -49,6 +49,24 @@ const fetchMovieAndCastDetails = async (movieId) => {
 
 }
 
+const isMovieExistCuaratedListItem = async (movieId, curatedListId) => {
+    try {
+        const isMovie = await curatedListItem.findOne({
+            where: {
+                movieId: Number(movieId),
+                curatedListId: Number(curatedListId)
+            },
+            logging: console.log
+        });
+
+        console.log(isMovie)
+        return isMovie || false;
+    } catch (error) {
+        console.error("Error checking movie existence:", error);
+        return false;
+    }
+};
 
 
-module.exports = { getActor, movieExistsInDB, fetchMovieAndCastDetails }
+
+module.exports = { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistCuaratedListItem }
