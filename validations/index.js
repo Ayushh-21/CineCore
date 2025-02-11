@@ -15,5 +15,18 @@ const validateCuratedList = (name, description, slug) => {
     return null
 }
 
+const validateRatingAndReview = (rating, reviewText) => {
+    const errors = []
+    if (typeof rating !== 'number' || isNaN(rating) || rating < 0 || rating > 10) {
+        errors.push("Rating must be a float between 0 and 10.");
+    }
 
-module.exports = { validateCuratedList, validateCuratedList }
+    if (typeof reviewText !== 'string' || reviewText.length > 500) {
+        errors.push("Review text must be a maximum of 500 characters.");
+    }
+
+    return errors
+}
+
+
+module.exports = { validateCuratedList, validateCuratedList, validateRatingAndReview }

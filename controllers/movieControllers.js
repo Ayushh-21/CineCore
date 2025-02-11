@@ -1,7 +1,8 @@
-const { validateCuratedList } = require("../validations")
-const { curatedList, watchlist, wishlist, curatedListItem } = require('../models')
+const { validateCuratedList, validateRatingAndReview } = require("../validations")
+const { curatedList, watchlist, wishlist, curatedListItem, review, movie } = require('../models')
 const { generateSlug } = require("../service/serviceFunction")
 const { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistCuaratedListItem } = require("./dataControllers")
+const { where, Op } = require("sequelize")
 
 const searchMovies = async (req, res) => {
     try {
@@ -193,4 +194,58 @@ const createCuratedListitem = async (req, res) => {
     }
 }
 
-module.exports = { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist, createCuratedListitem }
+const addReviewsAndRatings = async (req, res) => {
+    try {
+        const { movieId } = req.params
+        const { rating, reviewText } = req.body
+        const errors = validateRatingAndReview(rating, reviewText)
+
+        if (errors.length > 0) {
+            return res.status(400).json({
+                message: errors
+            })
+        }
+
+        await review.create({
+            movieId, rating, reviewText
+        })
+
+        res.status(200).json({
+            message: 'Review added successfully.'
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error creating review.",
+            error: error.message
+        })
+    }
+}
+
+const SearchMovieByGenreAndActor = async (req, res) => {
+    try {
+        const { genre, actor } = req.query
+
+        if (!genre || !actor) {
+            return res.status(400).json({ message: "Genre and actor are required!" });
+        }
+
+        const movies = await movie.findAll({
+            where: {
+                genre: { [Op.like]: `%${genre}%` },
+                actors: { [Op.like]: `%${actor}%` }
+            }
+        })
+
+        res.json({ movies });
+    } catch (error) {
+        res.status(500).json({
+            message: "Error fetching movie.",
+            error: error.message
+        })
+    }
+}
+
+
+
+module.exports = { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist, createCuratedListitem, addReviewsAndRatings, SearchMovieByGenreAndActor }
