@@ -1,8 +1,10 @@
 const { validateCuratedList, validateRatingAndReview } = require("../validations")
 const { curatedList, watchlist, wishlist, curatedListItem, review, movie } = require('../models')
 const { generateSlug } = require("../service/serviceFunction")
-const { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistCuaratedListItem } = require("./dataControllers")
-const { where, Op } = require("sequelize")
+const { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistCuaratedListItem, isMovieExistInCuratedList } = require("./dataControllers")
+const { Op, Model, where } = require("sequelize")
+const axiosInstance = require("../lib/axios")
+const { raw } = require("express")
 
 const searchMovies = async (req, res) => {
     try {
@@ -54,7 +56,6 @@ const createCuratedLists = async (req, res) => {
         })
 
     } catch (error) {
-        console.log(error)
         res.status(500).json({
             message: "Error creating curated list.",
             error: error.message
@@ -89,7 +90,6 @@ const updateCuratedLists = async (req, res) => {
         })
 
     } catch (error) {
-        console.log(error)
         res.status(500).json({
             message: "Error updating curated list."
         })
@@ -170,6 +170,13 @@ const createCuratedListitem = async (req, res) => {
             movie = await fetchMovieAndCastDetails(movieId)
         }
 
+        const isMovieExistIncuratedList = isMovieExistInCuratedList(curatedListId)
+        if (!isMovieExistIncuratedList) {
+            res.status(400).json({
+                message: "curatedListId does not exist in db."
+            })
+        }
+
         const isMovie = await isMovieExistCuaratedListItem(movie.id, curatedListId)
         if (!isMovie) {
             await curatedListItem.create({
@@ -188,7 +195,7 @@ const createCuratedListitem = async (req, res) => {
 
     } catch (error) {
         res.status(500).json({
-            message: "Error creating curatedlistitems.",
+            message: "curatedListId does not exist in db.",
             error: error.message
         })
     }
@@ -246,6 +253,88 @@ const SearchMovieByGenreAndActor = async (req, res) => {
     }
 }
 
+const sortMoviesByQuery = async (req, res) => {
+    try {
+        const { list, sortBy, order } = req.query
+
+        const validLists = ["watchlist", "wishlist", "curatedListItem"]
+        const validSortBy = ["rating", "releaseYear"]
+        const validOrder = ["ASC", "DESC"]
+
+        if (!validLists.includes(list)) res.status(400).json({ message: "Invalid list type" })
+        if (!validSortBy.includes(sortBy)) res.status(400).json({ message: "Invalid sort parameter" })
+        if (!validOrder.includes(order)) res.status(400).json({ message: "Invalid order(use ASC or DESC)" })
+
+        const listModels = {
+            watchlist,
+            wishlist,
+            curatedListItem,
+        };
+
+        const movies = await movie.findAll({
+            include: {
+                model: listModels[list],
+                required: true,
+                attributes: [],
+            },
+            order: [[sortBy, order]],
+            attributes: [
+                "id",
+                "title",
+                "tmdbId",
+                "genre",
+                "actors",
+                "releaseYear",
+                "rating"
+            ],
+        })
+
+        res.json({ movies })
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error fetching movie.",
+            error: error.message
+        })
+    }
+}
 
 
-module.exports = { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist, createCuratedListitem, addReviewsAndRatings, SearchMovieByGenreAndActor }
+const fetchMoviesByTopRating = async (req, res) => {
+    try {
+        const topMovies = await movie.findAll({
+            order: [["rating", 'DESC']],
+            limit: 5,
+            attributes: ["id", "title", "rating"]
+        })
+
+        const movieDetails = []
+        for (const movie of topMovies) {
+            const reviews = await review.findOne({
+                where: { movieId: movie.id },
+                attributes: ["reviewText"],
+                raw: true
+            })
+
+            const wordCount = reviews ? reviews.reviewText.split(" ").length : 0
+
+            movieDetails.push({
+                title: movie.title,
+                rating: movie.rating,
+                reviews: {
+                    text: reviews ? reviews.reviewText : "No review Available",
+                    wordCount: wordCount,
+                },
+            })
+        }
+        res.json({ movies: movieDetails })
+
+    } catch (error) {
+        res.status(500).json({
+            message: "Error fetching movie.",
+            error: error.message
+        })
+    }
+}
+
+module.exports = { createCuratedLists, updateCuratedLists, searchMovies, createWatchlist, createWishlist, createCuratedListitem, addReviewsAndRatings, SearchMovieByGenreAndActor, sortMoviesByQuery, fetchMoviesByTopRating }

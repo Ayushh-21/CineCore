@@ -1,5 +1,5 @@
 const axiosInstance = require("../lib/axios");
-const { movie, curatedListItem } = require("../models");
+const { movie, curatedList, curatedListItem } = require("../models");
 require("dotenv").config();
 
 const getActor = async (movieId) => {
@@ -43,30 +43,39 @@ const fetchMovieAndCastDetails = async (movieId) => {
         return newMovie;
 
     } catch (error) {
-        console.error('Error fetching movie details:', error);
         throw new Error('Failed to fetch movie details.');
     }
 
+}
+
+const isMovieExistInCuratedList = async (curatedListId) => {
+    try {
+        const isMovie = await curatedList.findOne({
+            where: {
+                id: curatedListId
+            }
+        });
+        return isMovie || false;
+    } catch (error) {
+        throw new Error("Error checking movie existence:", error);
+    }
 }
 
 const isMovieExistCuaratedListItem = async (movieId, curatedListId) => {
     try {
         const isMovie = await curatedListItem.findOne({
             where: {
-                movieId: Number(movieId),
-                curatedListId: Number(curatedListId)
-            },
-            logging: console.log
+                movieId: movieId,
+                curatedListId: curatedListId
+            }
         });
 
-        console.log(isMovie)
         return isMovie || false;
     } catch (error) {
-        console.error("Error checking movie existence:", error);
-        return false;
+        throw new Error("Error checking movie existence:", error);
     }
 };
 
 
 
-module.exports = { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistCuaratedListItem }
+module.exports = { getActor, movieExistsInDB, fetchMovieAndCastDetails, isMovieExistInCuratedList, isMovieExistCuaratedListItem }
